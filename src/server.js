@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3033;
 
 // Middleware
 app.use(cors({
-  origin: ['https://main.d3pjbharp3d6cg.amplifyapp.com', 'http://localhost:3000', 'http://13.203.207.159:3000'],
+  origin: ['https://main.d3pjbharp3d6cg.amplifyapp.com', 'http://localhost:3000', 'http://ec2-13-203-207-159.ap-south-1.compute.amazonaws.com:3000'],
   credentials: true
 }));
 app.use(helmet({
