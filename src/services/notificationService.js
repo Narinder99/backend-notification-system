@@ -133,9 +133,13 @@ class NotificationService {
 
       console.log('Created notification:', notification);
 
-      // Add notification to each follower's array (max 100)
+      // Add notification to each follower's notification_events table
       for (const followerId of onlineFollowerIds) {
-        await this.addNotificationToUser(client, followerId, notification);
+        const notificationId = uuidv4();
+        await client.query(
+          'INSERT INTO notification_events (id, user_id, type, message, seen, actor_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [notificationId, followerId, notification.type, notification.message, false, actorId, new Date()]
+        );
       }
 
       // Send via SSE to connected users immediately
@@ -151,41 +155,7 @@ class NotificationService {
 
 
 
-  // Add notification to user's array (with cleanup for max 100)
-  async addNotificationToUser(client, userId, notification) {
-    // Get current notifications
-    const result = await client.query(
-      'SELECT notifications FROM users WHERE id = $1',
-      [userId]
-    );
 
-    // Parse JSON notifications
-    let notifications = [];
-    if (result.rows[0]?.notifications) {
-      try {
-        notifications = Array.isArray(result.rows[0].notifications) 
-          ? result.rows[0].notifications 
-          : JSON.parse(result.rows[0].notifications);
-      } catch (error) {
-        console.error('Error parsing notifications JSON:', error);
-        notifications = [];
-      }
-    }
-    
-    // Add new notification
-    notifications.push(notification);
-    
-    // Keep only the latest 100 notifications
-    if (notifications.length > 100) {
-      notifications = notifications.slice(-100);
-    }
-
-    // Store notifications as JSON for simplicity
-    await client.query(
-      'UPDATE users SET notifications = $1 WHERE id = $2',
-      [JSON.stringify(notifications), userId]
-    );
-  }
 
   // Get notifications for a user
   async getNotifications(userId) {
@@ -296,7 +266,10 @@ class NotificationService {
         };
 
         // Add notification to the person being followed (userId is the person being followed)
-        await this.addNotificationToUser(client, userId, notification);
+        await client.query(
+          'INSERT INTO notification_events (id, user_id, type, message, seen, actor_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [notificationId, userId, 'follow', `${followerUser.rows[0].username} followed you`, false, followerId, new Date()]
+        );
 
         // Send via SSE to the person being followed if they're online
         const followedUserStatus = await client.query(
