@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3033;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: ['https://main.d3pjbharp3d6cg.amplifyapp.com', 'http://localhost:3000'],
+  origin: ['https://main.d3pjbharp3d6cg.amplifyapp.com', 'http://localhost:3000', 'http://13.203.207.159:3000'],
   credentials: true
 }));
 app.use(morgan('combined'));
