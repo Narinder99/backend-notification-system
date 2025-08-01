@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-require('dotenv').config();
 
 const notificationRoutes = require('./routes/notificationRoutes');
 
@@ -12,7 +11,7 @@ const PORT = process.env.PORT || 3033;
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: ['https://main.d3pjbharp3d6cg.amplifyapp.com', 'http://localhost:3000'],
   credentials: true
 }));
 app.use(morgan('combined'));
