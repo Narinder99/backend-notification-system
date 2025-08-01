@@ -1,14 +1,12 @@
 const { Pool } = require('pg');
+require('dotenv').config();
 
 const pool = new Pool({
-  user: 'notification_system',
-  host: 'dpg-d26d5kfdiees7391gg4g-a.oregon-postgres.render.com',
-  database: 'notification_system_bkwx',
-  password: 'Sw1eYLxkiypvLmmPIUNU1tCmObjJJF9w',
-  port: 5432,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  user:  'postgres',
+  host:  'localhost',
+  database:  'notification_system',
+  password:  'password',
+  port:  5432,
 });
 
 module.exports = pool; 
