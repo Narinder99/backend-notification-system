@@ -52,19 +52,15 @@ class NotificationService {
 
       // Create notification for the target user only
       const notificationId = uuidv4();
-      const notification = {
-        id: notificationId,
-        type,
-        message: `${actorUsername} ${message}`,
-        seen: false,
-        actor_id: actorId,
-        created_at: new Date()
-      };
+      const notificationMessage = `${actorUsername} ${message}`;
 
-      console.log('Created one-to-one notification:', notification);
+      console.log('Created one-to-one notification:', { id: notificationId, type, message: notificationMessage });
 
-      // Add notification to target user's array
-      await this.addNotificationToUser(client, targetUserId, notification);
+      // Insert notification into notification_events table
+      await client.query(
+        'INSERT INTO notification_events (id, user_id, type, message, seen, actor_id, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [notificationId, targetUserId, type, notificationMessage, false, actorId, new Date()]
+      );
 
       // Send via SSE to target user if they're online
       const targetUserStatus = await client.query(
@@ -75,7 +71,14 @@ class NotificationService {
       if (targetUserStatus.rows[0]?.is_online) {
         sseService.sendToUsers([targetUserId], {
           type: 'notification',
-          data: notification
+          data: {
+            id: notificationId,
+            type,
+            message: notificationMessage,
+            seen: false,
+            actor_id: actorId,
+            created_at: new Date()
+          }
         });
       }
 
@@ -188,31 +191,16 @@ class NotificationService {
   async getNotifications(userId) {
     const client = await pool.connect();
     try {
-      // Get direct notifications only
-      const directResult = await client.query(
-        'SELECT notifications FROM users WHERE id = $1',
-        [userId]
-      );
+      // Get notifications from notification_events table
+      const result = await client.query(`
+        SELECT ne.id, ne.type, ne.message, ne.seen, ne.actor_id, ne.created_at, u.username as actor_username
+        FROM notification_events ne
+        LEFT JOIN users u ON ne.actor_id = u.id
+        WHERE ne.user_id = $1
+        ORDER BY ne.created_at DESC
+      `, [userId]);
 
-      if (directResult.rows.length === 0) {
-        throw new Error('User not found');
-      }
-
-      // Parse JSON notifications
-      let directNotifications = [];
-      if (directResult.rows[0]?.notifications) {
-        try {
-          directNotifications = Array.isArray(directResult.rows[0].notifications) 
-            ? directResult.rows[0].notifications 
-            : JSON.parse(directResult.rows[0].notifications);
-        } catch (error) {
-          console.error('Error parsing notifications JSON:', error);
-          directNotifications = [];
-        }
-      }
-      
-      // Sort by timestamp (newest first)
-      return directNotifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return result.rows;
 
     } finally {
       client.release();
@@ -223,38 +211,10 @@ class NotificationService {
   async markAsSeen(userId, notificationId) {
     const client = await pool.connect();
     try {
-      // Update direct notifications
-      const result = await client.query(
-        'SELECT notifications FROM users WHERE id = $1',
-        [userId]
-      );
-
-      if (result.rows.length === 0) return;
-
-      // Parse JSON notifications
-      let notifications = [];
-      if (result.rows[0].notifications) {
-        try {
-          notifications = Array.isArray(result.rows[0].notifications) 
-            ? result.rows[0].notifications 
-            : JSON.parse(result.rows[0].notifications);
-        } catch (error) {
-          console.error('Error parsing notifications JSON:', error);
-          notifications = [];
-        }
-      }
-      
-      const updatedNotifications = notifications.map(notification => {
-        if (notification.id === notificationId) {
-          return { ...notification, seen: true };
-        }
-        return notification;
-      });
-
-      // Update user's notifications as JSON
+      // Update notification in notification_events table
       await client.query(
-        'UPDATE users SET notifications = $1 WHERE id = $2',
-        [JSON.stringify(updatedNotifications), userId]
+        'UPDATE notification_events SET seen = true WHERE id = $1 AND user_id = $2',
+        [notificationId, userId]
       );
 
     } finally {
@@ -266,10 +226,10 @@ class NotificationService {
   async clearNotifications(userId) {
     const client = await pool.connect();
     try {
-      // Clear all notifications by setting to empty array
+      // Clear all notifications from notification_events table
       await client.query(
-        'UPDATE users SET notifications = $1 WHERE id = $2',
-        [JSON.stringify([]), userId]
+        'DELETE FROM notification_events WHERE user_id = $1',
+        [userId]
       );
 
       console.log(`Cleared all notifications for user ${userId}`);
