@@ -7,7 +7,7 @@ require('dotenv').config();
 const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
-const PORT =  3033;
+const PORT = process.env.PORT || 3033;
 
 // Middleware
 app.use(helmet());
