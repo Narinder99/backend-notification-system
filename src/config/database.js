@@ -1,12 +1,11 @@
 const { Pool } = require('pg');
-require('dotenv').config();
 
 const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: process.env.DB_NAME || 'notification_system',
-  password: process.env.DB_PASSWORD || 'password',
-  port: process.env.DB_PORT || 5432,
+  user: 'notification_system',
+  host: 'dpg-d26d5kfdiees7391gg4g-a.oregon-postgres.render.com',
+  database: 'notification_system_bkwx',
+  password: 'Sw1eYLxkiypvLmmPIUNU1tCmObjJJF9w',
+  port: 5432,
   ssl: {
     rejectUnauthorized: false
   }
